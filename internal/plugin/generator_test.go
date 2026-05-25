@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 The generator-release-notes Authors
+
+package plugin
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestGeneratorGenerate(t *testing.T) {
+	t.Parallel()
+
+	output := New().Generate(ReleaseContext{
+		Version:        "1.3.0",
+		CurrentVersion: "1.2.0",
+		Commits: []string{
+			"feat: add new feature",
+			"fix: resolve issue with X",
+			"docs: update README",
+			"feat!: remove deprecated endpoint",
+		},
+	})
+
+	require.Equal(t, "## v1.3.0\n\n## What's Changed\n\n### Features\n- feat: add new feature\n- BREAKING: feat!: remove deprecated endpoint\n\n### Bug Fixes\n- fix: resolve issue with X\n\n### Other\n- docs: update README\n\n**Full Changelog**: v1.2.0...v1.3.0", output)
+}
+
+func TestGeneratorGenerateWithoutCommitsUsesFallback(t *testing.T) {
+	t.Parallel()
+
+	output := New().Generate(ReleaseContext{Branch: "main"})
+
+	require.Equal(t, "## What's Changed\n\n- No notable changes\n\n_Target branch: main_", output)
+}
+
+func TestClassifyCommit(t *testing.T) {
+	t.Parallel()
+
+	section, line := classifyCommit("fix: patch bug\n\nBREAKING CHANGE: behavior changed")
+	require.Equal(t, bugFixesSection, section)
+	require.Equal(t, "BREAKING CHANGE: behavior changed", line)
+
+	section, line = classifyCommit("notes from manual release")
+	require.Equal(t, otherChangesSection, section)
+	require.Equal(t, "notes from manual release", line)
+}
