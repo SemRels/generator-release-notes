@@ -8,12 +8,12 @@ import (
 	"log"
 	"os"
 
-	grpcserver "github.com/SemRels/plugin-template/internal/grpc"
-	semrelplugin "github.com/SemRels/plugin-template/internal/plugin"
+	grpcserver "github.com/SemRels/generator-release-notes/internal/grpc"
+	semrelplugin "github.com/SemRels/generator-release-notes/internal/plugin"
 )
 
 func main() {
-	provider := semrelplugin.NewProvider("replace-me")
+	provider := semrelplugin.NewProvider("generator-release-notes")
 	server := grpcserver.NewProviderServer(provider)
 
 	if _, err := server.Health(context.Background()); err != nil {
