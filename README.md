@@ -1,43 +1,49 @@
 # generator-release-notes
 
-Release notes generator plugin for Semantic Release.
+Generates release notes text for providers and notification hooks.
 
-Generates release notes content from Semantic Release metadata.
+This plugin is distributed as the standalone Go binary `semrel-plugin-generator-release-notes`. Semrel executes the binary as a subprocess, provides plugin configuration through `SEMREL_PLUGIN_*` environment variables, provides release context through `SEMREL_*` environment variables, reads standard output, and treats exit code `0` as success and any non-zero exit code as failure. Install the binary in `~/.semrel/plugins/` or anywhere on your `$PATH`.
 
-## Documentation
+## Installation
 
-- Docs (coming soon): <https://github.com/SemRels/semrel/tree/main/docs/plugins/generator-release-notes>
-- Template source: <https://github.com/SemRels/plugin-template>
+```bash
+go install github.com/SemRels/generator-release-notes/cmd/plugin@latest
+```
 
-## Repository Layout
+## Configuration
 
-`	ext
-cmd/plugin/              Plugin entry point
-internal/plugin/         Business logic scaffold
-internal/grpc/           gRPC transport scaffold
-proto/v1                 Symlink to the SemRel protobuf contract
-.github/workflows/       CI, release, and security automation
-`
-
-## Development
-
-`ash
-go build ./cmd/plugin
-go test ./...
-`
-
-## Configuration Example
-
-`yaml
+```yaml
 plugins:
   - name: generator-release-notes
-    type: generator
-    config:
-      format: markdown
-      include_commits: true
-      include_compare_url: true
-`
+    path: ~/.semrel/plugins/semrel-plugin-generator-release-notes
+    env:
+      SEMREL_PLUGIN_TEMPLATE: ".semrel/templates/release-notes.tmpl"
+      SEMREL_PLUGIN_MAX_COMMITS: "50"
+      SEMREL_PLUGIN_INCLUDE_BODY: "false"
+```
 
-## Status
+## `SEMREL_PLUGIN_*` variables
 
-This repository is bootstrapped from SemRels/plugin-template and is ready for implementation.
+| Name | Required | Description | Default |
+| --- | --- | --- | --- |
+| `SEMREL_PLUGIN_TEMPLATE` | Optional | Path to a custom template file. | Built-in template |
+| `SEMREL_PLUGIN_MAX_COMMITS` | Optional | Maximum number of commits to include. | 50 |
+| `SEMREL_PLUGIN_INCLUDE_BODY` | Optional | Include full commit bodies in the generated notes. | false |
+
+## `SEMREL_*` release context used
+
+| Variable | Description |
+| --- | --- |
+| `SEMREL_VERSION` | Resolved release version for the current run. |
+| `SEMREL_TAG_NAME` | Git tag name semrel will create or publish. |
+| `SEMREL_NEXT_VERSION` | Next version computed by semrel for the release. |
+| `SEMREL_CURRENT_VERSION` | Current version before the new release is applied. |
+| `SEMREL_BRANCH` | Git branch associated with the current release run. |
+
+## Example behavior
+
+The plugin renders release notes text that can be published by provider plugins or reused in notifications.
+
+## License
+
+Apache-2.0
