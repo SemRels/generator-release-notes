@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://registry.semrel.io/schemas/plugins/generator-release-notes/v1.json",
+  "title": "generator-release-notes plugin configuration",
+  "description": "Schema v1 for the generator-release-notes semrel plugin. Configure via SEMREL_* environment variables.",
+  "type": "object",
+  "properties": {
+    "SEMREL_VERSION": {
+      "type": "string",
+      "description": "Release version for the current semrel execution. semrel core may expose this as SEMREL_VERSION, SEMREL_TAG_NAME, or SEMREL_NEXT_VERSION depending on phase."
+    },
+    "SEMREL_TAG_NAME": {
+      "type": "string",
+      "description": "Release tag name for the current semrel execution."
+    },
+    "SEMREL_NEXT_VERSION": {
+      "type": "string",
+      "description": "Calculated next release version when SEMREL_VERSION is not yet finalized."
+    },
+    "SEMREL_CURRENT_VERSION": {
+      "type": "string",
+      "description": "Previously released version before this release."
+    },
+    "SEMREL_BRANCH": {
+      "type": "string",
+      "description": "Release branch name for the current semrel execution."
+    },
+    "SEMREL_COMMITS": {
+      "type": "string",
+      "description": "JSON-encoded array of raw commit message strings since the last release tag. Populated automatically by semrel core.",
+      "examples": [
+        "[\"feat: add feature\", \"fix: patch issue\"]"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

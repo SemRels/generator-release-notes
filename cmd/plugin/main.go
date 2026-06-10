@@ -13,11 +13,14 @@ import (
 	plugin "github.com/SemRels/generator-release-notes/internal/plugin"
 )
 
+const pluginSchemaVersion = 1
+
 func main() {
 	os.Exit(run(os.Stdout, os.Stderr, os.Getenv))
 }
 
 func run(stdout, stderr io.Writer, getenv func(string) string) int {
+	fmt.Fprintf(stderr, "plugin_schema_version=%d\n", pluginSchemaVersion)
 	ctx, err := releaseContextFromEnv(getenv)
 	if err != nil {
 		fmt.Fprintln(stderr, "generator-release-notes:", err)

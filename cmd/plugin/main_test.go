@@ -31,7 +31,7 @@ func TestRunWritesReleaseNotes(t *testing.T) {
 	code := run(&stdout, &stderr, getenv)
 
 	require.Equal(t, 0, code)
-	require.Empty(t, stderr.String())
+	require.Equal(t, "plugin_schema_version=1\n", stderr.String())
 	require.Contains(t, stdout.String(), "## What's Changed")
 	require.Contains(t, stdout.String(), "### Features")
 }
