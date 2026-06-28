@@ -9,6 +9,34 @@ import (
 	"strings"
 )
 
+// aiTrailerPatterns matches known AI co-author trailers in commit messages.
+var aiTrailerPatterns = []struct {
+	pattern *regexp.Regexp
+	label   string
+}{
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*copilot`),        "GitHub Copilot"},
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*github-copilot`), "GitHub Copilot"},
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*claude`),         "Claude (Anthropic)"},
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*chatgpt`),        "ChatGPT (OpenAI)"},
+	{regexp.MustCompile(`(?i)(?m)^ai-assisted:\s*true`),            "AI"},
+	{regexp.MustCompile(`(?i)(?m)^generated-by:`),                  "AI"},
+}
+
+// detectAIAuthors returns deduplicated AI tool labels found in commit trailers.
+func detectAIAuthors(commitMsg string) []string {
+	seen := map[string]struct{}{}
+	var labels []string
+	for _, pat := range aiTrailerPatterns {
+		if pat.pattern.MatchString(commitMsg) {
+			if _, ok := seen[pat.label]; !ok {
+				seen[pat.label] = struct{}{}
+				labels = append(labels, pat.label)
+			}
+		}
+	}
+	return labels
+}
+
 const (
 	featuresSection     = "Features"
 	bugFixesSection     = "Bug Fixes"
@@ -23,7 +51,10 @@ type ReleaseContext struct {
 }
 
 type GenerateOptions struct {
-	Signature bool
+	Signature           bool
+	AIDisclosure        bool
+	AIDisclosureBadge   string
+	AIDisclosureSection bool
 }
 
 type Generator struct{}
@@ -35,7 +66,12 @@ func New() *Generator {
 }
 
 func DefaultGenerateOptions() GenerateOptions {
-	return GenerateOptions{Signature: false}
+	return GenerateOptions{
+		Signature:           false,
+		AIDisclosure:        false,
+		AIDisclosureBadge:   "🤖",
+		AIDisclosureSection: false,
+	}
 }
 
 func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) string {
@@ -46,10 +82,28 @@ func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) str
 
 	sections := map[string][]string{}
 	rendered := 0
+	type aiEntry struct {
+		header string
+		labels []string
+	}
+	var aiEntries []aiEntry
+
 	for _, commit := range ctx.Commits {
 		section, line := classifyCommit(commit)
 		if section == "" || line == "" {
 			continue
+		}
+		if generateOptions.AIDisclosure {
+			if labels := detectAIAuthors(commit); len(labels) > 0 {
+				badge := generateOptions.AIDisclosureBadge
+				if badge == "" {
+					badge = "🤖"
+				}
+				line = line + " " + badge
+				if generateOptions.AIDisclosureSection {
+					aiEntries = append(aiEntries, aiEntry{firstLine(commit), labels})
+				}
+			}
 		}
 		sections[section] = append(sections[section], line)
 		rendered++
@@ -88,6 +142,14 @@ func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) str
 		fmt.Fprintf(&builder, "\n\n**Full Changelog**: %s...%s", displayVersion(ctx.CurrentVersion), displayVersion(ctx.Version))
 	case strings.TrimSpace(ctx.Branch) != "":
 		fmt.Fprintf(&builder, "\n\n_Target branch: %s_", strings.TrimSpace(ctx.Branch))
+	}
+
+	if generateOptions.AIDisclosure && generateOptions.AIDisclosureSection && len(aiEntries) > 0 {
+		builder.WriteString("\n\n<details>\n<summary>🤖 AI-Assisted Contributions</summary>\n\nThe following changes were co-authored with an AI assistant:\n\n")
+		for _, e := range aiEntries {
+			fmt.Fprintf(&builder, "- %s — Co-authored with **%s**\n", e.header, strings.Join(e.labels, ", "))
+		}
+		builder.WriteString("\n_Disclosed in accordance with project AI-usage policy (L-08 §8)._\n</details>")
 	}
 
 	if generateOptions.Signature {

@@ -30,6 +30,11 @@ func run(stdout, stderr io.Writer, getenv func(string) string) int {
 
 	options := plugin.DefaultGenerateOptions()
 	options.Signature = envBool(getenv, "SEMREL_PLUGIN_SIGNATURE", false)
+	options.AIDisclosure = envBool(getenv, "SEMREL_PLUGIN_AI_DISCLOSURE", false)
+	options.AIDisclosureSection = envBool(getenv, "SEMREL_PLUGIN_AI_DISCLOSURE_SECTION", false)
+	if badge := strings.TrimSpace(getenv("SEMREL_PLUGIN_AI_DISCLOSURE_BADGE")); badge != "" {
+		options.AIDisclosureBadge = badge
+	}
 
 	if _, err := io.WriteString(stdout, plugin.New().Generate(ctx, options)); err != nil {
 		fmt.Fprintln(stderr, "generator-release-notes:", err)
