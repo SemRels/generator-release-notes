@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	plugin "github.com/SemRels/generator-release-notes/internal/plugin"
@@ -27,7 +28,10 @@ func run(stdout, stderr io.Writer, getenv func(string) string) int {
 		return 1
 	}
 
-	if _, err := io.WriteString(stdout, plugin.New().Generate(ctx)); err != nil {
+	options := plugin.DefaultGenerateOptions()
+	options.Signature = envBool(getenv, "SEMREL_PLUGIN_SIGNATURE", false)
+
+	if _, err := io.WriteString(stdout, plugin.New().Generate(ctx, options)); err != nil {
 		fmt.Fprintln(stderr, "generator-release-notes:", err)
 		return 1
 	}
@@ -61,4 +65,18 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func envBool(getenv func(string) string, key string, defaultValue bool) bool {
+	value := strings.TrimSpace(getenv(key))
+	if value == "" {
+		return defaultValue
+	}
+
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return defaultValue
+	}
+
+	return parsed
 }
