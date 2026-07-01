@@ -1,6 +1,6 @@
 # generator-release-notes
 
-[![Latest Release](https://img.shields.io/github/v/release/SemRels/generator-release-notes?label=version\&color=blue)](https://github.com/SemRels/generator-release-notes/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/SemRels/generator-release-notes?label=version&color=blue)](https://github.com/SemRels/generator-release-notes/releases/latest)
 
 Generates release notes text for providers and notification hooks.
 
