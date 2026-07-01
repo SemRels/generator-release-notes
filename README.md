@@ -1,5 +1,7 @@
 # generator-release-notes
 
+[![Latest Release](https://img.shields.io/github/v/release/SemRels/generator-release-notes?label=version\&color=blue)](https://github.com/SemRels/generator-release-notes/releases/latest)
+
 Generates release notes text for providers and notification hooks.
 
 This plugin is distributed as the standalone Go binary `semrel-plugin-generator-release-notes`. Semrel executes the binary as a subprocess, provides plugin configuration through `SEMREL_PLUGIN_*` environment variables, provides release context through `SEMREL_*` environment variables, reads standard output, and treats exit code `0` as success and any non-zero exit code as failure. Install the binary in `~/.semrel/plugins/` or anywhere on your `$PATH`.
