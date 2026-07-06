@@ -35,6 +35,19 @@ func run(stdout, stderr io.Writer, getenv func(string) string) int {
 	if badge := strings.TrimSpace(getenv("SEMREL_PLUGIN_AI_DISCLOSURE_BADGE")); badge != "" {
 		options.AIDisclosureBadge = badge
 	}
+	options.NewContributors = envBool(getenv, "SEMREL_PLUGIN_NEW_CONTRIBUTORS", true)
+	options.MVP = envBool(getenv, "SEMREL_PLUGIN_MVP", false)
+	if mv := strings.TrimSpace(getenv("SEMREL_PLUGIN_MVP_METRIC")); mv != "" {
+		options.MVPMetric = mv
+	}
+	if raw := strings.TrimSpace(getenv("SEMREL_PLUGIN_CONTRIBUTORS_JSON")); raw != "" {
+		var contributors []plugin.Contributor
+		if err := json.Unmarshal([]byte(raw), &contributors); err != nil {
+			fmt.Fprintln(stderr, "generator-release-notes: invalid SEMREL_PLUGIN_CONTRIBUTORS_JSON:", err)
+		} else {
+			options.Contributors = contributors
+		}
+	}
 
 	if _, err := io.WriteString(stdout, plugin.New().Generate(ctx, options)); err != nil {
 		fmt.Fprintln(stderr, "generator-release-notes:", err)
@@ -58,6 +71,7 @@ func releaseContextFromEnv(getenv func(string) string) (plugin.ReleaseContext, e
 		Version:        firstNonEmpty(getenv("SEMREL_VERSION"), getenv("SEMREL_TAG_NAME"), getenv("SEMREL_NEXT_VERSION")),
 		CurrentVersion: strings.TrimSpace(getenv("SEMREL_CURRENT_VERSION")),
 		Branch:         strings.TrimSpace(getenv("SEMREL_BRANCH")),
+		RepositoryURL:  strings.TrimSpace(getenv("SEMREL_REPOSITORY_URL")),
 		Commits:        commits,
 	}, nil
 }

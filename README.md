@@ -51,6 +51,13 @@ plugins:
 | `SEMREL_PLUGIN_MAX_COMMITS` | Optional | Maximum number of commits to include. | 50 |
 | `SEMREL_PLUGIN_INCLUDE_BODY` | Optional | Include full commit bodies in the generated notes. | false |
 | `SEMREL_PLUGIN_SIGNATURE` | Optional | Append an opt-in footer line linking to `semrel.io` after the generated release notes output. | `false` |
+| `SEMREL_PLUGIN_AI_DISCLOSURE` | Optional | Detect AI co-author trailers and append a badge to each AI-assisted commit line. | `false` |
+| `SEMREL_PLUGIN_AI_DISCLOSURE_BADGE` | Optional | Badge appended to AI-assisted lines. | `🤖` |
+| `SEMREL_PLUGIN_AI_DISCLOSURE_SECTION` | Optional | Append a collapsible "🤖 AI-Assisted Contributions" section (requires `SEMREL_PLUGIN_AI_DISCLOSURE=true`). | `false` |
+| `SEMREL_PLUGIN_NEW_CONTRIBUTORS` | Optional | Render a "New Contributors" section listing first-time contributors for this release (requires contributor data via `SEMREL_PLUGIN_CONTRIBUTORS_JSON`). | `true` |
+| `SEMREL_PLUGIN_CONTRIBUTORS_JSON` | Optional | JSON array of first-time contributors for this release, e.g. `[{"name":"Alice","login":"alice","pr":42}]`. Can be populated from semrel core's `SEMREL_CONTRIBUTORS` (filter to `firstContribution:true`). | — |
+| `SEMREL_PLUGIN_MVP` | Optional | Render a "🏆 MVP" section highlighting the top contributor for this release (requires `SEMREL_PLUGIN_NEW_CONTRIBUTORS=true` and non-empty contributors). | `false` |
+| `SEMREL_PLUGIN_MVP_METRIC` | Optional | MVP ranking metric: `commits` (default, PR-reference count) or `impact` (weights breaking changes/features more heavily). | `commits` |
 
 ## `SEMREL_*` release context used
 
@@ -61,6 +68,7 @@ plugins:
 | `SEMREL_NEXT_VERSION` | Next version computed by semrel for the release. |
 | `SEMREL_CURRENT_VERSION` | Current version before the new release is applied. |
 | `SEMREL_BRANCH` | Git branch associated with the current release run. |
+| `SEMREL_REPOSITORY_URL` | Repository URL used to render contributor links and MVP mentions. |
 
 ## Example behavior
 

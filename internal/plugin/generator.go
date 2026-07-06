@@ -14,12 +14,12 @@ var aiTrailerPatterns = []struct {
 	pattern *regexp.Regexp
 	label   string
 }{
-	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*copilot`),        "GitHub Copilot"},
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*copilot`), "GitHub Copilot"},
 	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*github-copilot`), "GitHub Copilot"},
-	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*claude`),         "Claude (Anthropic)"},
-	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*chatgpt`),        "ChatGPT (OpenAI)"},
-	{regexp.MustCompile(`(?i)(?m)^ai-assisted:\s*true`),            "AI"},
-	{regexp.MustCompile(`(?i)(?m)^generated-by:`),                  "AI"},
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*claude`), "Claude (Anthropic)"},
+	{regexp.MustCompile(`(?i)co-authored-by:[^\n]*chatgpt`), "ChatGPT (OpenAI)"},
+	{regexp.MustCompile(`(?i)(?m)^ai-assisted:\s*true`), "AI"},
+	{regexp.MustCompile(`(?i)(?m)^generated-by:`), "AI"},
 }
 
 // detectAIAuthors returns deduplicated AI tool labels found in commit trailers.
@@ -47,7 +47,20 @@ type ReleaseContext struct {
 	Version        string
 	CurrentVersion string
 	Branch         string
+	RepositoryURL  string
 	Commits        []string
+}
+
+// Contributor represents a person who contributed to a release.
+type Contributor struct {
+	// Name is the display name (git author name or GitHub login).
+	Name string `json:"name"`
+	// Login is the optional GitHub/Gitea username (e.g. "alice"). When set,
+	// the entry is rendered as @alice; otherwise Name is used as plain text.
+	Login string `json:"login,omitempty"`
+	// PR is the optional pull-request number associated with this contributor's
+	// first contribution in the release. Zero means no PR is available.
+	PR int `json:"pr,omitempty"`
 }
 
 type GenerateOptions struct {
@@ -55,6 +68,20 @@ type GenerateOptions struct {
 	AIDisclosure        bool
 	AIDisclosureBadge   string
 	AIDisclosureSection bool
+	// NewContributors controls whether a "New Contributors" section is appended.
+	// The section is only rendered when Contributors is non-empty.
+	NewContributors bool
+	// MVP controls whether a "🏆 MVP" section is rendered after the contributor
+	// list. Requires NewContributors=true and a non-empty Contributors slice.
+	MVP bool
+	// MVPMetric determines how the MVP is chosen: "commits" (default) picks the
+	// contributor with the highest commit count; "impact" weights breaking/feat
+	// commits more heavily.
+	MVPMetric string
+	// Contributors is the pre-computed list of first-time contributors for this
+	// release. It is populated by the caller (e.g. from SEMREL_PLUGIN_CONTRIBUTORS_JSON).
+	// When empty the section is silently skipped regardless of NewContributors.
+	Contributors []Contributor
 }
 
 type Generator struct{}
@@ -71,6 +98,9 @@ func DefaultGenerateOptions() GenerateOptions {
 		AIDisclosure:        false,
 		AIDisclosureBadge:   "🤖",
 		AIDisclosureSection: false,
+		NewContributors:     true,
+		MVP:                 false,
+		MVPMetric:           "commits",
 	}
 }
 
@@ -142,6 +172,28 @@ func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) str
 		fmt.Fprintf(&builder, "\n\n**Full Changelog**: %s...%s", displayVersion(ctx.CurrentVersion), displayVersion(ctx.Version))
 	case strings.TrimSpace(ctx.Branch) != "":
 		fmt.Fprintf(&builder, "\n\n_Target branch: %s_", strings.TrimSpace(ctx.Branch))
+	}
+
+	if generateOptions.NewContributors && len(generateOptions.Contributors) > 0 {
+		builder.WriteString("\n\n### New Contributors\n")
+		for _, c := range generateOptions.Contributors {
+			builder.WriteString("* ")
+			builder.WriteString(formatContributorEntry(c, ctx.RepositoryURL))
+			builder.WriteString(" made their first contribution")
+			if c.PR > 0 && ctx.RepositoryURL != "" {
+				repoURL := strings.TrimRight(strings.TrimSpace(ctx.RepositoryURL), "/")
+				fmt.Fprintf(&builder, " in [#%d](%s/pull/%d)", c.PR, repoURL, c.PR)
+			}
+			builder.WriteString("\n")
+		}
+
+		if generateOptions.MVP {
+			mvp := pickMVP(generateOptions.Contributors, ctx.Commits, generateOptions.MVPMetric)
+			if mvp != nil {
+				builder.WriteString("\n### 🏆 MVP\n")
+				fmt.Fprintf(&builder, "%s led the contributors this release.\n", formatContributorEntry(*mvp, ctx.RepositoryURL))
+			}
+		}
 	}
 
 	if generateOptions.AIDisclosure && generateOptions.AIDisclosureSection && len(aiEntries) > 0 {
@@ -219,4 +271,102 @@ func displayVersion(version string) string {
 		return version
 	}
 	return "v" + version
+}
+
+// formatContributorEntry returns a Markdown-formatted mention for a contributor.
+// When Login is set it renders as @login (linked when a repositoryURL is available);
+// otherwise it falls back to plain Name.
+func formatContributorEntry(c Contributor, repositoryURL string) string {
+	login := strings.TrimSpace(c.Login)
+	if login == "" {
+		name := strings.TrimSpace(c.Name)
+		if name == "" {
+			return "unknown"
+		}
+		return name
+	}
+
+	repositoryURL = strings.TrimRight(strings.TrimSpace(repositoryURL), "/")
+	if repositoryURL == "" {
+		return "@" + login
+	}
+
+	// Derive the base host URL from the repository URL (e.g. https://github.com).
+	// We can't assume a specific host; strip the path to get the root.
+	base := repositoryURL
+	if idx := strings.Index(repositoryURL, "//"); idx >= 0 {
+		rest := repositoryURL[idx+2:]
+		if slash := strings.Index(rest, "/"); slash >= 0 {
+			base = repositoryURL[:idx+2+slash]
+		}
+	}
+	return fmt.Sprintf("[@%s](%s/%s)", login, base, login)
+}
+
+// pullRequestPattern matches "(#123)" style PR references used for MVP scoring.
+var pullRequestPattern = regexp.MustCompile(`\(#(\d+)\)`)
+
+func pickMVP(contributors []Contributor, commits []string, mvpMetric string) *Contributor {
+	if len(contributors) == 0 {
+		return nil
+	}
+	if len(contributors) == 1 {
+		return &contributors[0]
+	}
+
+	// Without per-commit author attribution we rank contributors by the number
+	// of PR references in commit messages that match their PR number.
+	scores := make(map[string]int, len(contributors))
+	for _, commit := range commits {
+		prs := pullRequestPattern.FindAllStringSubmatch(commit, -1)
+		for _, match := range prs {
+			prNum := match[1]
+			for _, c := range contributors {
+				if c.PR > 0 && fmt.Sprintf("%d", c.PR) == prNum {
+					key := contributorKey(c)
+					if mvpMetric == "impact" {
+						scores[key] += impactWeight(commit)
+					} else {
+						scores[key]++
+					}
+				}
+			}
+		}
+	}
+
+	// Fall back to first contributor in list (ordering preserved from caller).
+	best := &contributors[0]
+	bestScore := scores[contributorKey(contributors[0])]
+	for i := range contributors[1:] {
+		c := &contributors[i+1]
+		if s := scores[contributorKey(*c)]; s > bestScore {
+			bestScore = s
+			best = c
+		}
+	}
+	return best
+}
+
+func contributorKey(c Contributor) string {
+	if c.Login != "" {
+		return c.Login
+	}
+	return c.Name
+}
+
+func impactWeight(commit string) int {
+	lower := strings.ToLower(commit)
+	if strings.Contains(lower, "breaking change") {
+		return 3
+	}
+	if conventionalHeaderPattern.MatchString(firstLine(commit)) {
+		matches := conventionalHeaderPattern.FindStringSubmatch(firstLine(commit))
+		if len(matches) > 3 && matches[3] == "!" {
+			return 3
+		}
+		if len(matches) > 1 && matches[1] == "feat" {
+			return 2
+		}
+	}
+	return 1
 }
