@@ -136,3 +136,90 @@ func TestGeneratorAIDisclosureOffByDefault(t *testing.T) {
 	require.NotContains(t, output, "🤖")
 	require.NotContains(t, output, "AI-Assisted Contributions")
 }
+
+func TestGeneratorNewContributors(t *testing.T) {
+	t.Parallel()
+
+	generator := New()
+	ctx := ReleaseContext{
+		Version:       "1.4.0",
+		RepositoryURL: "https://github.com/SemRels/semrel",
+		Commits:       []string{"feat: add login (#42)"},
+	}
+
+	t.Run("new contributors section rendered when contributors provided", func(t *testing.T) {
+		t.Parallel()
+
+		opts := DefaultGenerateOptions()
+		opts.Contributors = []Contributor{
+			{Name: "Alice", Login: "alice", PR: 42},
+		}
+
+		output := generator.Generate(ctx, opts)
+
+		require.Contains(t, output, "### New Contributors")
+		require.Contains(t, output, "[@alice](https://github.com/alice)")
+		require.Contains(t, output, "[#42](https://github.com/SemRels/semrel/pull/42)")
+	})
+
+	t.Run("new contributors section skipped when contributors empty", func(t *testing.T) {
+		t.Parallel()
+
+		opts := DefaultGenerateOptions()
+		opts.Contributors = nil
+
+		output := generator.Generate(ctx, opts)
+
+		require.NotContains(t, output, "New Contributors")
+	})
+
+	t.Run("new contributors section skipped when disabled", func(t *testing.T) {
+		t.Parallel()
+
+		opts := DefaultGenerateOptions()
+		opts.NewContributors = false
+		opts.Contributors = []Contributor{{Name: "Alice", Login: "alice"}}
+
+		output := generator.Generate(ctx, opts)
+
+		require.NotContains(t, output, "New Contributors")
+	})
+
+	t.Run("contributor without login uses plain name", func(t *testing.T) {
+		t.Parallel()
+
+		opts := DefaultGenerateOptions()
+		opts.Contributors = []Contributor{{Name: "Alice Smith"}}
+
+		output := generator.Generate(ctx, opts)
+
+		require.Contains(t, output, "Alice Smith made their first contribution")
+	})
+
+	t.Run("MVP section rendered when enabled", func(t *testing.T) {
+		t.Parallel()
+
+		opts := DefaultGenerateOptions()
+		opts.MVP = true
+		opts.Contributors = []Contributor{
+			{Name: "Alice", Login: "alice", PR: 42},
+		}
+
+		output := generator.Generate(ctx, opts)
+
+		require.Contains(t, output, "### 🏆 MVP")
+		require.Contains(t, output, "[@alice](https://github.com/alice) led the contributors this release.")
+	})
+
+	t.Run("MVP section skipped when disabled", func(t *testing.T) {
+		t.Parallel()
+
+		opts := DefaultGenerateOptions()
+		opts.MVP = false
+		opts.Contributors = []Contributor{{Name: "Alice", Login: "alice", PR: 42}}
+
+		output := generator.Generate(ctx, opts)
+
+		require.NotContains(t, output, "MVP")
+	})
+}
