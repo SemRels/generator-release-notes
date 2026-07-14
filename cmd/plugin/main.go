@@ -49,6 +49,15 @@ func run(stdout, stderr io.Writer, getenv func(string) string) int {
 		}
 	}
 
+	if raw := strings.TrimSpace(getenv("SEMREL_PLUGIN_SECTIONS_JSON")); raw != "" {
+		var sections []plugin.SectionRule
+		if err := json.Unmarshal([]byte(raw), &sections); err != nil {
+			fmt.Fprintln(stderr, "generator-release-notes: invalid SEMREL_PLUGIN_SECTIONS_JSON:", err)
+		} else {
+			options.Sections = sections
+		}
+	}
+
 	if _, err := io.WriteString(stdout, plugin.New().Generate(ctx, options)); err != nil {
 		fmt.Fprintln(stderr, "generator-release-notes:", err)
 		return 1

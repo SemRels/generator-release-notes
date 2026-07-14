@@ -43,6 +43,22 @@ const (
 	otherChangesSection = "Other"
 )
 
+// SectionRule maps a conventional-commit type to a custom changelog section
+// heading, mirroring the "presetConfig.types" mapping supported by
+// @semantic-release/release-notes-generator. When Hidden is true, commits of
+// this Type are omitted from the release notes entirely (Section is ignored).
+type SectionRule struct {
+	// Type is the conventional-commit type this rule applies to (e.g. "feat",
+	// "fix", "chore"). Matching is case-insensitive.
+	Type string `json:"type"`
+	// Section is the heading commits of this Type are grouped under (e.g.
+	// "Features", "Dependencies"). Ignored when Hidden is true.
+	Section string `json:"section,omitempty"`
+	// Hidden, when true, drops commits of this Type instead of assigning them
+	// to a section.
+	Hidden bool `json:"hidden,omitempty"`
+}
+
 type ReleaseContext struct {
 	Version        string
 	CurrentVersion string
@@ -82,6 +98,10 @@ type GenerateOptions struct {
 	// release. It is populated by the caller (e.g. from SEMREL_PLUGIN_CONTRIBUTORS_JSON).
 	// When empty the section is silently skipped regardless of NewContributors.
 	Contributors []Contributor
+	// Sections, when non-empty, overrides the built-in feat/fix→section
+	// mapping used to group release-note entries. Types without a matching
+	// rule fall back to the "Other" section.
+	Sections []SectionRule
 }
 
 type Generator struct{}
@@ -119,7 +139,7 @@ func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) str
 	var aiEntries []aiEntry
 
 	for _, commit := range ctx.Commits {
-		section, line := classifyCommit(commit)
+		section, line := classifyCommit(commit, generateOptions)
 		if section == "" || line == "" {
 			continue
 		}
@@ -145,7 +165,7 @@ func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) str
 	}
 	builder.WriteString("## What's Changed")
 
-	for _, section := range []string{featuresSection, bugFixesSection, otherChangesSection} {
+	for _, section := range sectionOrder(generateOptions) {
 		lines := sections[section]
 		if len(lines) == 0 {
 			continue
@@ -211,7 +231,7 @@ func (g *Generator) Generate(ctx ReleaseContext, options ...GenerateOptions) str
 	return builder.String()
 }
 
-func classifyCommit(commit string) (string, string) {
+func classifyCommit(commit string, options GenerateOptions) (string, string) {
 	trimmed := strings.TrimSpace(commit)
 	if trimmed == "" {
 		return "", ""
@@ -233,7 +253,27 @@ func classifyCommit(commit string) (string, string) {
 		line = "BREAKING: " + header
 	}
 
-	switch strings.ToLower(matches[1]) {
+	commitType := strings.ToLower(matches[1])
+
+	if rule, ok := findSectionRule(options.Sections, commitType); ok {
+		if rule.Hidden {
+			return "", ""
+		}
+		section := strings.TrimSpace(rule.Section)
+		if section == "" {
+			return "", ""
+		}
+		return section, line
+	}
+
+	if len(options.Sections) > 0 {
+		// A custom mapping is configured but doesn't cover this type; bucket it
+		// with the other unmapped commits instead of applying the built-in
+		// feat/fix defaults.
+		return otherChangesSection, line
+	}
+
+	switch commitType {
 	case "feat":
 		return featuresSection, line
 	case "fix", "perf", "revert":
@@ -241,6 +281,46 @@ func classifyCommit(commit string) (string, string) {
 	default:
 		return otherChangesSection, line
 	}
+}
+
+// findSectionRule returns the first rule whose Type matches commitType
+// case-insensitively.
+func findSectionRule(rules []SectionRule, commitType string) (SectionRule, bool) {
+	for _, rule := range rules {
+		if strings.EqualFold(strings.TrimSpace(rule.Type), commitType) {
+			return rule, true
+		}
+	}
+	return SectionRule{}, false
+}
+
+// sectionOrder returns the release-note section headings in the order they
+// should be rendered. Without a custom Sections mapping this is the built-in
+// fixed order. With a custom mapping, each distinct configured section is
+// rendered in declaration order, followed by "Other" for any commit types
+// the mapping doesn't cover.
+func sectionOrder(options GenerateOptions) []string {
+	if len(options.Sections) == 0 {
+		return []string{featuresSection, bugFixesSection, otherChangesSection}
+	}
+
+	var order []string
+	seen := map[string]bool{}
+	for _, rule := range options.Sections {
+		if rule.Hidden {
+			continue
+		}
+		section := strings.TrimSpace(rule.Section)
+		if section == "" || seen[section] {
+			continue
+		}
+		seen[section] = true
+		order = append(order, section)
+	}
+	if !seen[otherChangesSection] {
+		order = append(order, otherChangesSection)
+	}
+	return order
 }
 
 func breakingChangeText(message string) (string, bool) {
