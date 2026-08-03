@@ -69,6 +69,21 @@ func TestGeneratorGenerateWithCustomSections(t *testing.T) {
 	require.Equal(t, "## v1.3.0\n\n## What's Changed\n\n### Highlights\n- feat: add new feature\n\n### Bugfixes\n- fix: resolve issue with X\n\n### Other\n- chore: tidy up", output)
 }
 
+func TestGeneratorGenerateWithEmptyCustomSectionUsesFallback(t *testing.T) {
+	t.Parallel()
+
+	opts := DefaultGenerateOptions()
+	opts.Sections = []SectionRule{{Type: "chore"}}
+
+	output := New().Generate(ReleaseContext{
+		Version: "1.3.0",
+		Commits: []string{"chore: tidy up"},
+	}, opts)
+
+	require.Contains(t, output, "### Other")
+	require.Contains(t, output, "chore: tidy up")
+}
+
 func TestFindSectionRuleIsCaseInsensitive(t *testing.T) {
 	t.Parallel()
 
