@@ -37,13 +37,63 @@ func TestGeneratorGenerateWithoutCommitsUsesFallback(t *testing.T) {
 func TestClassifyCommit(t *testing.T) {
 	t.Parallel()
 
-	section, line := classifyCommit("fix: patch bug\n\nBREAKING CHANGE: behavior changed")
+	section, line := classifyCommit("fix: patch bug\n\nBREAKING CHANGE: behavior changed", DefaultGenerateOptions())
 	require.Equal(t, bugFixesSection, section)
 	require.Equal(t, "BREAKING CHANGE: behavior changed", line)
 
-	section, line = classifyCommit("notes from manual release")
+	section, line = classifyCommit("notes from manual release", DefaultGenerateOptions())
 	require.Equal(t, otherChangesSection, section)
 	require.Equal(t, "notes from manual release", line)
+}
+
+func TestGeneratorGenerateWithCustomSections(t *testing.T) {
+	t.Parallel()
+
+	opts := DefaultGenerateOptions()
+	opts.Sections = []SectionRule{
+		{Type: "feat", Section: "Highlights"},
+		{Type: "fix", Section: "Bugfixes"},
+		{Type: "docs", Hidden: true},
+	}
+
+	output := New().Generate(ReleaseContext{
+		Version: "1.3.0",
+		Commits: []string{
+			"feat: add new feature",
+			"fix: resolve issue with X",
+			"docs: update README",
+			"chore: tidy up",
+		},
+	}, opts)
+
+	require.Equal(t, "## v1.3.0\n\n## What's Changed\n\n### Highlights\n- feat: add new feature\n\n### Bugfixes\n- fix: resolve issue with X\n\n### Other\n- chore: tidy up", output)
+}
+
+func TestGeneratorGenerateWithEmptyCustomSectionUsesFallback(t *testing.T) {
+	t.Parallel()
+
+	opts := DefaultGenerateOptions()
+	opts.Sections = []SectionRule{{Type: "chore"}}
+
+	output := New().Generate(ReleaseContext{
+		Version: "1.3.0",
+		Commits: []string{"chore: tidy up"},
+	}, opts)
+
+	require.Contains(t, output, "### Other")
+	require.Contains(t, output, "chore: tidy up")
+}
+
+func TestFindSectionRuleIsCaseInsensitive(t *testing.T) {
+	t.Parallel()
+
+	rules := []SectionRule{{Type: "Feat", Section: "Features"}}
+	rule, ok := findSectionRule(rules, "feat")
+	require.True(t, ok)
+	require.Equal(t, "Features", rule.Section)
+
+	_, ok = findSectionRule(rules, "fix")
+	require.False(t, ok)
 }
 
 func TestGeneratorGenerateWithSignature(t *testing.T) {
