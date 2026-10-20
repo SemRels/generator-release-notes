@@ -4,6 +4,7 @@
   "title": "generator-release-notes plugin configuration",
   "description": "Schema v1 for the generator-release-notes semrel plugin. Configure via SEMREL_* environment variables.",
   "type": "object",
+  "x-semrel-dry-run": true,
   "properties": {
     "SEMREL_VERSION": {
       "type": "string",
