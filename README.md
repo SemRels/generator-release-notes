@@ -39,29 +39,31 @@ cosign verify ghcr.io/semrels/generator-release-notes:latest \
 
 ```yaml
 plugins:
-  - name: generator-release-notes
-    path: ~/.semrel/plugins/semrel-plugin-generator-release-notes
-    env:
-      SEMREL_PLUGIN_TEMPLATE: ".semrel/templates/release-notes.tmpl"
-      SEMREL_PLUGIN_MAX_COMMITS: "50"
-      SEMREL_PLUGIN_INCLUDE_BODY: "false"
+  - uses: "@semrel/generator-release-notes"
+    phase: generator
+    args:
+      template: ".semrel/templates/release-notes.tmpl"
+      max_commits: "50"
+      include_body: "false"
 ```
 
-## `SEMREL_PLUGIN_*` variables
+## Options
 
-| Name | Required | Description | Default |
-| --- | --- | --- | --- |
-| `SEMREL_PLUGIN_TEMPLATE` | Optional | Path to a custom template file. | Built-in template |
-| `SEMREL_PLUGIN_MAX_COMMITS` | Optional | Maximum number of commits to include. | 50 |
-| `SEMREL_PLUGIN_INCLUDE_BODY` | Optional | Include full commit bodies in the generated notes. | false |
-| `SEMREL_PLUGIN_SIGNATURE` | Optional | Append an opt-in footer line linking to `semrel.io` after the generated release notes output. | `false` |
-| `SEMREL_PLUGIN_AI_DISCLOSURE` | Optional | Detect AI co-author trailers and append a badge to each AI-assisted commit line. | `false` |
-| `SEMREL_PLUGIN_AI_DISCLOSURE_BADGE` | Optional | Badge appended to AI-assisted lines. | `🤖` |
-| `SEMREL_PLUGIN_AI_DISCLOSURE_SECTION` | Optional | Append a collapsible "🤖 AI-Assisted Contributions" section (requires `SEMREL_PLUGIN_AI_DISCLOSURE=true`). | `false` |
-| `SEMREL_PLUGIN_NEW_CONTRIBUTORS` | Optional | Render a "New Contributors" section listing first-time contributors for this release (requires contributor data via `SEMREL_PLUGIN_CONTRIBUTORS_JSON`). | `true` |
-| `SEMREL_PLUGIN_CONTRIBUTORS_JSON` | Optional | JSON array of first-time contributors for this release, e.g. `[{"name":"Alice","login":"alice","pr":42}]`. Can be populated from semrel core's `SEMREL_CONTRIBUTORS` (filter to `firstContribution:true`). | — |
-| `SEMREL_PLUGIN_MVP` | Optional | Render a "🏆 MVP" section highlighting the top contributor for this release (requires `SEMREL_PLUGIN_NEW_CONTRIBUTORS=true` and non-empty contributors). | `false` |
-| `SEMREL_PLUGIN_MVP_METRIC` | Optional | MVP ranking metric: `commits` (default, PR-reference count) or `impact` (weights breaking changes/features more heavily). | `commits` |
+Every option can be set as an entry under `args` in `.semrel.yaml`. semrel passes each entry to the plugin as the environment variable shown in the table, so you can also set that variable directly (for example in your CI environment) instead of using `args`.
+
+| Argument | Environment variable | Required | Description | Default |
+| --- | --- | --- | --- | --- |
+| `template` | `SEMREL_PLUGIN_TEMPLATE` | Optional | Path to a custom template file. | Built-in template |
+| `max_commits` | `SEMREL_PLUGIN_MAX_COMMITS` | Optional | Maximum number of commits to include. | 50 |
+| `include_body` | `SEMREL_PLUGIN_INCLUDE_BODY` | Optional | Include full commit bodies in the generated notes. | false |
+| `signature` | `SEMREL_PLUGIN_SIGNATURE` | Optional | Append an opt-in footer line linking to `semrel.io` after the generated release notes output. | `false` |
+| `ai_disclosure` | `SEMREL_PLUGIN_AI_DISCLOSURE` | Optional | Detect AI co-author trailers and append a badge to each AI-assisted commit line. | `false` |
+| `ai_disclosure_badge` | `SEMREL_PLUGIN_AI_DISCLOSURE_BADGE` | Optional | Badge appended to AI-assisted lines. | `🤖` |
+| `ai_disclosure_section` | `SEMREL_PLUGIN_AI_DISCLOSURE_SECTION` | Optional | Append a collapsible "🤖 AI-Assisted Contributions" section (requires `SEMREL_PLUGIN_AI_DISCLOSURE=true`). | `false` |
+| `new_contributors` | `SEMREL_PLUGIN_NEW_CONTRIBUTORS` | Optional | Render a "New Contributors" section listing first-time contributors for this release (requires contributor data via `SEMREL_PLUGIN_CONTRIBUTORS_JSON`). | `true` |
+| `contributors_json` | `SEMREL_PLUGIN_CONTRIBUTORS_JSON` | Optional | JSON array of first-time contributors for this release, e.g. `[{"name":"Alice","login":"alice","pr":42}]`. Can be populated from semrel core's `SEMREL_CONTRIBUTORS` (filter to `firstContribution:true`). | — |
+| `mvp` | `SEMREL_PLUGIN_MVP` | Optional | Render a "🏆 MVP" section highlighting the top contributor for this release (requires `SEMREL_PLUGIN_NEW_CONTRIBUTORS=true` and non-empty contributors). | `false` |
+| `mvp_metric` | `SEMREL_PLUGIN_MVP_METRIC` | Optional | MVP ranking metric: `commits` (default, PR-reference count) or `impact` (weights breaking changes/features more heavily). | `commits` |
 
 ## `SEMREL_*` release context used
 
