@@ -26,7 +26,7 @@ Images are signed with [cosign](https://github.com/sigstore/cosign) and include 
 
 ```bash
 cosign verify ghcr.io/semrels/generator-release-notes:latest \
-  --certificate-identity-regexp 'https://github.com/SemRels/generator-release-notes/.github/workflows/release.yml.*' \
+  --certificate-identity-regexp 'https://github.com/SemRels/generator-release-notes/.github/workflows/container.yml.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
