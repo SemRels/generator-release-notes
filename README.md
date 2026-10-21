@@ -1,6 +1,10 @@
 # generator-release-notes
 
 [![Latest Release](https://img.shields.io/github/v/release/SemRels/generator-release-notes?label=version&color=blue)](https://github.com/SemRels/generator-release-notes/releases/latest)
+[![CI](https://github.com/SemRels/generator-release-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/SemRels/generator-release-notes/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/SemRels/generator-release-notes)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/SemRels/generator-release-notes/badge)](https://scorecard.dev/viewer/?uri=github.com/SemRels/generator-release-notes)
+[![REUSE status](https://api.reuse.software/badge/github.com/SemRels/generator-release-notes)](https://api.reuse.software/info/github.com/SemRels/generator-release-notes)
 
 Generates release notes text for providers and notification hooks.
 
