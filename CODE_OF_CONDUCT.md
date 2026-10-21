@@ -1,6 +1,6 @@
 # Code of Conduct
 
-generator-release-notes is committed to providing a welcoming and harassment-free community.
+`generator-release-notes` is committed to providing a welcoming and harassment-free community.
 
 ## Our Pledge
 
