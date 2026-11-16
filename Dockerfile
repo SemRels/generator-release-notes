@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 The semrel Authors
 
 # ── build stage ────────────────────────────────────────────────────────────────
-FROM --platform=$BUILDPLATFORM debian:13-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS build
+FROM --platform=$BUILDPLATFORM debian:13-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2 AS build
 
 RUN apt-get update && \
     apt-get -y --no-install-recommends install ca-certificates curl git build-essential && \
@@ -38,7 +38,7 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     task build
 
 # ── distroless release image ───────────────────────────────────────────────────
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931
 
 COPY --from=build /src/bin/plugin /usr/local/bin/plugin
 USER nonroot
